@@ -1,6 +1,4 @@
-#if __OBJC2__
-
-#include <mach/shared_region.h>
+#include <sys/cdefs.h>
 
 #if __LP64__
 #   define PTR " .quad " 
@@ -10,6 +8,12 @@
 #   define PTR " .long " 
 #   define PTRSIZE "4"
 #   define LOGPTRSIZE "2"
+#endif
+
+#if __has_feature(ptrauth_calls)
+#   define SIGNED_METHOD_LIST_IMP "@AUTH(ia,0,addr) "
+#else
+#   define SIGNED_METHOD_LIST_IMP
 #endif
 
 #define str(x) #x
@@ -97,7 +101,7 @@ asm(
     "L_ro: \n"
     ".long 2 \n"
     ".long 0 \n"
-    ".long "PTRSIZE" \n"
+    ".long " PTRSIZE " \n"
 #if __LP64__
     ".long 0 \n"
 #endif
@@ -208,7 +212,7 @@ asm(
     "L_sub_ro: \n"
     ".long 2 \n"
     ".long 0 \n"
-    ".long "PTRSIZE" \n"
+    ".long " PTRSIZE " \n"
 #if __LP64__
     ".long 0 \n"
 #endif
@@ -244,44 +248,45 @@ asm(
     PTR "0 \n"
 
     "L_evil_methods: \n"
-    ".long 3*"PTRSIZE" \n"
+    ".long 3*" PTRSIZE " \n"
     ".long 1 \n"
     PTR "L_load \n"
     PTR "L_load \n"
-    PTR str2(SHARED_REGION_BASE+SHARED_REGION_SIZE-PAGE_MAX_SIZE) " \n"
+    PTR "_abort" SIGNED_METHOD_LIST_IMP "\n"
+    // assumes that abort is inside the dyld shared cache
 
     "L_good_methods: \n"
-    ".long 3*"PTRSIZE" \n"
+    ".long 3*" PTRSIZE " \n"
     ".long 2 \n"
     PTR "L_load \n"
     PTR "L_load \n"
-    PTR "_nop \n"
+    PTR "_nop" SIGNED_METHOD_LIST_IMP "\n"
     PTR "L_self \n"
     PTR "L_self \n"
-    PTR "_nop \n"
+    PTR "_nop" SIGNED_METHOD_LIST_IMP "\n"
 
     "L_super_ivars: \n"
-    ".long 4*"PTRSIZE" \n"
+    ".long 4*" PTRSIZE " \n"
     ".long 1 \n"
     PTR "L_super_ivar_offset \n"
     PTR "L_super_ivar_name \n"
     PTR "L_super_ivar_type \n"
-    ".long "LOGPTRSIZE" \n"
-    ".long "PTRSIZE" \n"
+    ".long " LOGPTRSIZE " \n"
+    ".long " PTRSIZE " \n"
 
     "L_sub_ivars: \n"
-    ".long 4*"PTRSIZE" \n"
+    ".long 4*" PTRSIZE " \n"
     ".long 1 \n"
     PTR "L_sub_ivar_offset \n"
     PTR "L_sub_ivar_name \n"
     PTR "L_sub_ivar_type \n"
-    ".long "LOGPTRSIZE" \n"
-    ".long "PTRSIZE" \n"
+    ".long " LOGPTRSIZE " \n"
+    ".long " PTRSIZE " \n"
 
     "L_super_ivar_offset: \n"
     ".long 0 \n"
     "L_sub_ivar_offset: \n"
-    ".long "PTRSIZE" \n"
+    ".long " PTRSIZE " \n"
 
     ".cstring \n"
     "L_super_name:       .ascii \"Super\\0\" \n"
@@ -312,8 +317,5 @@ asm(
 
     ".text \n"
 );
-
-// __OBJC2__
-#endif
 
 void fn(void) { }
